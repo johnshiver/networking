@@ -3,38 +3,61 @@ pub mod api {
     tonic::include_proto!("ping");
 }
 
-use tonic::{Request, Response, Status};
+use tokio::signal;
+use tonic::{async_trait, Request, Response, Status};
+use tonic::transport::Server;
 use crate::api::ping_service_server::{PingService, PingServiceServer};
 use crate::api::{PingRequest, PingResponse};
+use tokio::sync::oneshot::{self, Receiver, Sender};
 
 #[derive(Default)]
-struct Server {
-    peers: Vec<Server>,
+struct MyServer {
+    // peers: Vec<Server>,
     // state: State,
 }
 
-impl PingService for Server {
+#[async_trait]
+impl PingService for MyServer {
     async fn ping(&self, request: Request<PingRequest>) -> Result<Response<PingResponse>, Status> {
-        println!("got a request from {:?}", request.remote_addr());
-        let reply = PingResponse {
-            healthy: true,
-        };
+        println!("Got a request from {:?}", request.remote_addr());
+        let reply = PingResponse { healthy: true, };
         Ok(Response::new(reply))
     }
 }
 
 
-// Runtime to run our server
+pub fn signal_channel() -> (Sender<()>, Receiver<()>) {
+    oneshot::channel()
+}
+
+pub async fn wait_for_signal(tx: oneshot::Sender<()>) {
+    let _ = signal::ctrl_c().await;
+    println!("SIGINT received: shutting down");
+    let _ = tx.send(());
+}
+
+
+//
+//
+// // Runtime to run our server
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let (signal_tx, signal_rx) = signal_channel();
+    let _ = tokio::spawn(wait_for_signal(signal_tx));
+
+
     let addr = "[::1]:50051".parse()?;
-    let srv = Server::default();
+    let srv = MyServer::default();
 
     println!("Starting gRPC Server...");
-    Server::builder()
+    let server = Server::builder()
         .add_service(PingServiceServer::new(srv))
-        .serve(addr)
-        .await?;
+        .serve_with_shutdown(addr, async {
+            signal_rx.await.ok();
+            println!("Graceful context shutdown");
+        });
+        // .await?;
 
+    server.await?;
     Ok(())
 }

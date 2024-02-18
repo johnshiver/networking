@@ -10,9 +10,10 @@ path = "src/server.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tonic = "0.7"
+tonic = "0.11.0"
 tokio = { version = "1", features = ["full"] }
-prost = "0.10"
+prost = "0.12.3"
+async-trait = "0.1.77"
 
 [build-dependencies]
 tonic-build = "0.11.0"
