@@ -15,8 +15,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Sending request to gRPC Server...");
     let response = client.ping(request).await?;
-
+    let res = response.get_ref();
     println!("RESPONSE={:?}", response);
+    println!("RESPONSE={:?}", res);
 
     Ok(())
 }
