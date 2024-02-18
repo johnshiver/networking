@@ -7,6 +7,10 @@ edition = "2021"
 name = "pong-cluster"
 path = "src/server.rs"
 
+[[bin]]
+name = "pong-client"
+path = "src/client.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

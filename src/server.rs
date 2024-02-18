@@ -30,16 +30,13 @@ pub fn signal_channel() -> (Sender<()>, Receiver<()>) {
     oneshot::channel()
 }
 
-pub async fn wait_for_signal(tx: oneshot::Sender<()>) {
+pub async fn wait_for_signal(tx: Sender<()>) {
     let _ = signal::ctrl_c().await;
     println!("SIGINT received: shutting down");
     let _ = tx.send(());
 }
 
 
-//
-//
-// // Runtime to run our server
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (signal_tx, signal_rx) = signal_channel();
@@ -56,7 +53,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             signal_rx.await.ok();
             println!("Graceful context shutdown");
         });
-        // .await?;
 
     server.await?;
     Ok(())
