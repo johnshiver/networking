@@ -500,6 +500,7 @@ name = "networking"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "petgraph",
  "prost",
  "rand",
  "tokio",

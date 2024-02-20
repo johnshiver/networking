@@ -2,14 +2,39 @@ pub mod api {
     tonic::include_proto!("ping");
 }
 
+mod in_memory_network;
+
+use tokio::sync::RwLock;
+use std::sync::Arc;
 use rand::Rng;
 use tonic::service::Interceptor;
 use tonic::{Request, Status};
 use tonic::transport::Endpoint;
 use crate::api::ping_service_client::PingServiceClient;
 use crate::api::PingRequest;
+use crate::in_memory_network::InMemoryNetwork;
 
 
+struct NetworkInterceptor {
+    network: Arc<RwLock<InMemoryNetwork>>,
+    host: String,
+    target: String,
+}
+
+impl NetworkInterceptor {
+    pub fn new(network: Arc<RwLock<InMemoryNetwork>>, host: String, target: String) -> Self {
+        Self { network, host, target }
+    }
+}
+
+
+impl Interceptor for NetworkInterceptor {
+    fn call(&mut self, request: Request<()>) -> Result<Request<()>, Status> {
+        // if host and target are connected, allow the request
+        // otherwise have it fail
+        Ok(request)
+    }
+}
 
 
 
