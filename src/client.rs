@@ -19,13 +19,6 @@ use tower::ServiceBuilder;
 //     }
 // }
 
-// An interceptor function.
-fn intercept(req: Request<()>) -> Result<Request<()>, Status> {
-    println!("received {:?}", req.remote_addr());
-    println!("received {:?}", req.local_addr());
-    Ok(req)
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let mut client = PingServiceClient::connect("http://[::1]:50051").await?;
@@ -35,10 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let mut client = PingServiceClient::with_interceptor(conn, interceptor);
     let channel = Channel::from_static("http://[::1]:50051").connect().await?;
 
-    let channel = ServiceBuilder::new()
-        // Interceptors can be also be applied as middleware
-        .layer(tonic::service::interceptor(intercept))
-        .service(channel);
+    let channel = ServiceBuilder::new().service(channel);
 
     let mut client = PingServiceClient::new(channel);
 

@@ -37,6 +37,13 @@ pub async fn wait_for_signal(tx: Sender<()>) {
     let _ = tx.send(());
 }
 
+pub fn intercept(req: Request<()>) -> Result<Request<()>, Status> {
+    println!("received {:?}", req.remote_addr());
+    println!("received {:?}", req.local_addr());
+    println!("received {:?}", req.extensions());
+    Ok(req)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (signal_tx, signal_rx) = signal_channel();
@@ -47,6 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Starting gRPC Server...");
     let server = Server::builder()
+        .layer(tonic::service::interceptor(intercept))
         .add_service(PingServiceServer::new(srv))
         .serve_with_shutdown(addr, async {
             signal_rx.await.ok();
