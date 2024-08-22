@@ -39,11 +39,19 @@ impl InMemoryNetwork {
     ///
     /// ```
     pub fn add_edge(&mut self, node1: &str, node2: &str) {
-        self.graph.add_edge(
-            *self.node_indices.get(node1).unwrap(),
-            *self.node_indices.get(node2).unwrap(),
-            (),
-        );
+        // Check if both nodes are present in the graph
+        let node_index1 = match self.node_indices.get(node1) {
+            Some(&index) => index,
+            None => return, // Node1 not found, skip adding the edge
+        };
+
+        let node_index2 = match self.node_indices.get(node2) {
+            Some(&index) => index,
+            None => return, // Node2 not found, skip adding the edge
+        };
+
+        // Both nodes are present, proceed to add the edge
+        self.graph.add_edge(node_index1, node_index2, ());
     }
 
     // Clears all connections in the graph
