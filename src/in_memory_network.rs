@@ -1,14 +1,14 @@
 extern crate petgraph;
 
-use petgraph::algo::{connected_components, kosaraju_scc};
+use petgraph::algo::kosaraju_scc;
 use petgraph::graph::{NodeIndex, UnGraph};
-use petgraph::visit::Walker;
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct InMemoryNetwork {
-    graph: UnGraph<String, ()>,
+    pub graph: UnGraph<String, ()>,
     // Undirected graph with String as Node data and unit type for edges
-    node_indices: HashMap<String, NodeIndex>, // Mapping of node data to their NodeIndex for quick access
+    pub node_indices: HashMap<String, NodeIndex>, // Mapping of node data to their NodeIndex for quick access
 }
 
 impl InMemoryNetwork {
@@ -22,6 +22,28 @@ impl InMemoryNetwork {
     pub fn add_node(&mut self, name: &str) {
         let node_index = self.graph.add_node(name.to_string());
         self.node_indices.insert(name.to_string(), node_index);
+    }
+
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `node1`:
+    /// * `node2`:
+    ///
+    /// returns: ()
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///
+    /// ```
+    pub fn add_edge(&mut self, node1: &str, node2: &str) {
+        self.graph.add_edge(
+            *self.node_indices.get(node1).unwrap(),
+            *self.node_indices.get(node2).unwrap(),
+            (),
+        );
     }
 
     // Clears all connections in the graph
@@ -145,11 +167,7 @@ mod tests {
         let mut graph = InMemoryNetwork::new();
         graph.add_node("Node1");
         graph.add_node("Node2");
-        graph.graph.add_edge(
-            *graph.node_indices.get("Node1").unwrap(),
-            *graph.node_indices.get("Node2").unwrap(),
-            (),
-        );
+        graph.add_edge("Node1", "Node2");
 
         assert_eq!(graph.graph.edge_count(), 1);
         graph.clear_connections();
