@@ -1,9 +1,13 @@
 extern crate petgraph;
+
+use petgraph::algo::{connected_components, kosaraju_scc};
 use petgraph::graph::{NodeIndex, UnGraph};
+use petgraph::visit::Walker;
 use std::collections::HashMap;
 
 pub struct InMemoryNetwork {
-    graph: UnGraph<String, ()>, // Undirected graph with String as Node data and unit type for edges
+    graph: UnGraph<String, ()>,
+    // Undirected graph with String as Node data and unit type for edges
     node_indices: HashMap<String, NodeIndex>, // Mapping of node data to their NodeIndex for quick access
 }
 
@@ -56,6 +60,69 @@ impl InMemoryNetwork {
             _ => false, // One or both nodes do not exist in the graph
         }
     }
+
+    /// `get_connected_groups` identifies and returns the connected groups (components)
+    /// of nodes in a graph where each group represents a set of nodes that are mutually
+    /// reachable from each other. This function is particularly useful for analyzing
+    /// networks where you need to understand which nodes can communicate with each other
+    /// without requiring connections to other parts of the network.
+    ///
+    /// # Algorithm:
+    /// The function uses the Kosaraju's Strongly Connected Components (SCC) algorithm
+    /// to identify connected components in the graph. Although Kosaraju's algorithm is
+    /// typically used for finding SCCs in directed graphs, it is versatile enough to
+    /// identify connected components in undirected graphs as well.
+    ///
+    /// 1. **Kosaraju's Algorithm**:
+    ///    - The algorithm works in two passes over the graph:
+    ///      - **First Pass**: Perform a depth-first search (DFS) on the original graph
+    ///        and store nodes in a stack based on their finish times (nodes that finish
+    ///        last are pushed first).
+    ///      - **Second Pass**: Reverse the directions of all edges in the graph and
+    ///        perform DFS using the stack from the first pass. Each DFS in this pass
+    ///        identifies a strongly connected component.
+    ///    - For undirected graphs, each SCC corresponds to a connected component.
+    ///
+    /// 2. **Grouping Nodes**:
+    ///    - After identifying the connected components (SCCs), the function maps each
+    ///      node index to its corresponding component and then groups nodes by their
+    ///      component index.
+    ///    - The result is a `Vec<Vec<String>>` where each inner vector contains the
+    ///      node names of a connected component.
+    ///
+    /// # Use Case:
+    /// This function is useful in scenarios where a graph represents a network of
+    /// entities (e.g., computers, people, or services) and you need to determine which
+    /// subsets of entities can communicate with each other. For example, in a network
+    /// partition simulation, this function could be used to identify isolated groups
+    /// of nodes that can only interact within their group.
+    ///
+    /// # Example:
+    /// If you have a graph with nodes 1, 2, 3, 4, 5, and edges such that:
+    /// - 1, 2, 3 are connected among themselves
+    /// - 4 and 5 are connected among themselves but disconnected from 1, 2, 3
+    ///
+    /// The function will return `vec![vec!["1", "2", "3"], vec!["4", "5"]]`,
+    /// representing the two connected groups in the network.
+    ///
+    /// # Returns:
+    /// - A vector of vectors, where each inner vector represents a group of node names
+    ///   that are connected within the graph.
+    pub fn get_connected_groups(&self) -> Vec<Vec<String>> {
+        // Get the connected components using the kosaraju_scc algorithm for directed graphs
+        // This returns a Vec<Vec<NodeIndex>> where each Vec<NodeIndex> represents a connected component
+        let scc = kosaraju_scc(&self.graph);
+
+        // Convert the NodeIndex groups to the actual node names
+        scc.iter()
+            .map(|component| {
+                component
+                    .iter()
+                    .map(|&node_index| self.graph.node_weight(node_index).unwrap().clone())
+                    .collect()
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -78,7 +145,11 @@ mod tests {
         let mut graph = InMemoryNetwork::new();
         graph.add_node("Node1");
         graph.add_node("Node2");
-        graph.graph.add_edge(*graph.node_indices.get("Node1").unwrap(), *graph.node_indices.get("Node2").unwrap(), ());
+        graph.graph.add_edge(
+            *graph.node_indices.get("Node1").unwrap(),
+            *graph.node_indices.get("Node2").unwrap(),
+            (),
+        );
 
         assert_eq!(graph.graph.edge_count(), 1);
         graph.clear_connections();
@@ -104,5 +175,53 @@ mod tests {
         // Now, we expect 2 fully connected pairs: (Node1, Node2) and (Node3, Node4)
         // This means 1 connection per group, total 2 connections.
         assert_eq!(graph.graph.edge_count(), 2);
+    }
+
+    #[test]
+    fn test_nodes_are_connected() {
+        let mut graph = InMemoryNetwork::new();
+        graph.add_node("Node1");
+        graph.add_node("Node2");
+        graph.add_node("Node3");
+        graph.fully_connect_groups(3);
+
+        let connected = graph.are_connected("Node1", "Node2");
+        assert!(connected);
+        let connected = graph.are_connected("Node1", "Node3");
+        assert!(connected);
+        let connected = graph.are_connected("Node2", "Node3");
+        assert!(connected);
+    }
+
+    #[test]
+    fn test_no_connections() {
+        let mut graph = InMemoryNetwork::new();
+        graph.add_node("Node1");
+        graph.add_node("Node2");
+
+        assert!(!graph.are_connected("Node1", "Node2"));
+
+        let groups = graph.get_connected_groups();
+        assert_eq!(groups.len(), 2);
+        // Since the order of groups is not guaranteed, we check for membership rather than direct comparison
+        assert!(
+            groups.contains(&vec!["Node1".to_string()])
+                || groups.contains(&vec!["Node2".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_fully_connected_graph() {
+        let mut graph = InMemoryNetwork::new();
+        graph.add_node("Node1");
+        graph.add_node("Node2");
+        graph.fully_connect_groups(2); // Fully connect all nodes
+
+        let groups = graph.get_connected_groups();
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].len(), 2);
+        assert!(
+            groups[0].contains(&"Node1".to_string()) && groups[0].contains(&"Node2".to_string())
+        );
     }
 }
