@@ -25,11 +25,6 @@ impl NetworkInterceptor {
     pub fn new(network: Arc<RwLock<InMemoryNetwork>>, host: String) -> Self {
         Self { network, host }
     }
-
-    pub fn clear_connections(&mut self) {
-        let mut network = self.network.write().unwrap();
-        network.clear_connections();
-    }
 }
 
 impl Interceptor for NetworkInterceptor {
@@ -72,14 +67,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let interceptor = RandomFailInterceptor;
     let client_name = "host1";
     let target_name = "http://[::1]:50051";
-    let mut in_memory_network = InMemoryNetwork::new();
-    in_memory_network.add_node(client_name);
-    in_memory_network.add_node(target_name);
-    in_memory_network.add_edge(client_name, target_name);
-    let interceptor = NetworkInterceptor::new(
-        Arc::new(RwLock::new(in_memory_network)),
-        client_name.to_string(),
-    );
+    let in_memory_network = Arc::new(RwLock::new(InMemoryNetwork::new()));
+    in_memory_network.write().unwrap().add_node(client_name);
+    in_memory_network.write().unwrap().add_node(target_name);
+    in_memory_network
+        .write()
+        .unwrap()
+        .add_edge(client_name, target_name);
+    let interceptor = NetworkInterceptor::new(in_memory_network.clone(), client_name.to_string());
 
     // Create a channel and attach the interceptor
     let channel = Endpoint::from_static(target_name).connect().await?;
@@ -100,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => println!("Request failed: {:?}", e),
     }
 
-    interceptor.network.write().unwrap().clear_connections();
+    in_memory_network.write().unwrap().clear_connections();
 
     let mut request = Request::new(PingRequest {
         message: "hello there 2".to_string(),
